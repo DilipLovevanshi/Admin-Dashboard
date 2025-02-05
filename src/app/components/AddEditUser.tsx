@@ -1,21 +1,15 @@
-import {
-  Button,
-  Datepicker,
-  Label,
-  Modal,
-  Select,
-  TextInput,
-} from "flowbite-react";
+import { BACKEND_API } from "@/constants/api";
+import { Button, Label, Modal, Select, TextInput } from "flowbite-react";
+import React, { useEffect, useState } from "react";
+import { toast } from "react-toastify";
 
 interface AddEditUserProps {
   visible: boolean;
-  setVisible: any;
-  fetchData: any;
+  setVisible: (visible: boolean) => void;
+  fetchData: () => void;
   userDetails: any;
-  actionType: any;
+  actionType: string;
 }
-import React, { useEffect, useState } from "react";
-import { toast } from "react-toastify";
 
 const AddEditUser: React.FC<AddEditUserProps> = ({
   visible,
@@ -29,14 +23,35 @@ const AddEditUser: React.FC<AddEditUserProps> = ({
     lastName: "",
     email: "",
     phone: "",
-    license: {
-      licenseType: "",
-      licenseNo: "",
-      expiryDate: "",
-    },
+    license: [
+      {
+        licenseType: "",
+        licenseNo: "",
+        expiryDate: "",
+      },
+    ],
   });
 
-  const handleUserDataChange = (e: any) => {
+  useEffect(() => {
+    if (actionType === "EDIT" && userDetails) {
+      setUserData({
+        firstName: userDetails.firstName,
+        lastName: userDetails.lastName,
+        email: userDetails.email,
+        phone: userDetails.phone,
+        license: userDetails.license?.length
+          ? userDetails.license.map((license: any) => ({
+              ...license,
+              expiryDate: license.expiryDate
+                ? new Date(license.expiryDate).toISOString().split("T")[0]
+                : "",
+            }))
+          : [{ licenseType: "", licenseNo: "", expiryDate: "" }],
+      });
+    }
+  }, [actionType, userDetails]);
+
+  const handleUserDataChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setUserData((prev) => ({
       ...prev,
@@ -44,237 +59,208 @@ const AddEditUser: React.FC<AddEditUserProps> = ({
     }));
   };
 
-  const handleAddUserSubmit = async () => {
-    try {
-      const response = await fetch("http://localhost:3000/api/users", {
-        method: "POST",
-        body: JSON.stringify(userData),
-      });
-
-      if (response.ok) {
-        setUserData({
-          firstName: "",
-          lastName: "",
-          email: "",
-          phone: "",
-          license: {
-            licenseType: "",
-            licenseNo: "",
-            expiryDate: "",
-          },
-        });
-        setVisible(false);
-        toast("User Added Successfully");
-        fetchData();
-      }
-    } catch (error) {
-      console.log(error, "error");
-    }
+  const handleLicenseChange = (index: number, field: string, value: string) => {
+    setUserData((prev) => ({
+      ...prev,
+      license: prev.license.map((license, i) =>
+        i === index ? { ...license, [field]: value } : license
+      ),
+    }));
   };
 
-  const handleEditUserSubmit = async () => {
+  const addLicense = () => {
+    setUserData((prev) => ({
+      ...prev,
+      license: [
+        ...prev.license,
+        { licenseType: "", licenseNo: "", expiryDate: "" },
+      ],
+    }));
+  };
+
+  const removeLicense = (index: number) => {
+    setUserData((prev) => ({
+      ...prev,
+      license: prev.license.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleSubmit = async () => {
     try {
-      const response = await fetch("http://localhost:3000/api/users", {
-        method: "PATCH",
+      const formattedLicenses = userData.license.map((license) => ({
+        ...license,
+        expiryDate: license.expiryDate
+          ? new Date(license.expiryDate).toISOString()
+          : null,
+      }));
+
+      const response = await fetch(`${BACKEND_API}api/users`, {
+        method: actionType === "ADD" ? "POST" : "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: userDetails._id,
-          firstName: userData.firstName,
+          ...userData,
+          license: formattedLicenses,
+          userId: actionType === "EDIT" ? userDetails._id : undefined,
         }),
       });
 
+      console.log(
+        userData,
+        "userData userData",
+        formattedLicenses,
+        "formattedLicenses"
+      );
+
       if (response.ok) {
         setUserData({
           firstName: "",
           lastName: "",
           email: "",
           phone: "",
-          license: {
-            licenseType: "",
-            licenseNo: "",
-            expiryDate: "",
-          },
+          license: [{ licenseType: "", licenseNo: "", expiryDate: "" }],
         });
         setVisible(false);
-        toast("User Updated Successfully");
+        toast(
+          actionType === "ADD"
+            ? "User Added Successfully"
+            : "User Updated Successfully"
+        );
         fetchData();
+      } else {
+        throw new Error("Failed to save user data");
       }
     } catch (error) {
-      console.log(error, "error");
+      console.error("Error:", error);
+      toast.error("An error occurred while saving the user data.");
     }
   };
 
-  useEffect(() => {
-    if (actionType == "EDIT" && userDetails) {
-      setUserData({
-        firstName: userDetails.firstName,
-        lastName: userDetails.lastName,
-        email: userDetails.email,
-        phone: userDetails.phone,
-        license: {
-          licenseType: userDetails.license.licenseType,
-          licenseNo: userDetails.license.licenseNo,
-          expiryDate: "",
-        },
-      });
-    }
-  }, []);
-
   return (
-    <>
-      <Modal show={visible} onClose={() => setVisible(false)}>
-        <Modal.Header>{actionType == "ADD" ? "Add New Inspector" : "Edit Inspector"} User</Modal.Header>
-        <Modal.Body>
-          <div className="">
-            <div className="grid grid-cols-12 gap-30">
-              <div className="lg:col-span-6 col-span-12">
-                <div className="flex  flex-col gap-4">
-                  <div>
-                    <div className="mb-2 block">
-                      <Label htmlFor="name" value="Your First Name" />
-                    </div>
-                    <TextInput
-                      id="name"
-                      type="text"
-                      placeholder="Enter Fist Name"
-                      required
-                      className="form-control"
-                      name="firstName"
-                      value={userData.firstName}
-                      onChange={handleUserDataChange}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="lg:col-span-6 col-span-12">
-                <div className="flex  flex-col gap-4">
-                  <div>
-                    <div className="mb-2 block">
-                      <Label htmlFor="name" value="Your Last Name" />
-                    </div>
-                    <TextInput
-                      id="name"
-                      type="text"
-                      placeholder="Enter Last name"
-                      required
-                      className="form-control"
-                      name="lastName"
-                      value={userData.lastName}
-                      onChange={handleUserDataChange}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="lg:col-span-12 col-span-12">
-                <div className="flex  flex-col gap-4">
-                  <div>
-                    <div className="mb-2 block">
-                      <Label htmlFor="email1" value="Your email" />
-                    </div>
-                    <TextInput
-                      id="email1"
-                      type="email"
-                      placeholder="email@example.com"
-                      required
-                      disabled={actionType == "EDIT"}
-                      className="form-control"
-                      name="email"
-                      value={userData.email}
-                      onChange={handleUserDataChange}
-                    />
-                  </div>
-
-                  <div>
-                    <div className="mb-2 block">
-                      <Label htmlFor="name" value="Your Phone" />
-                    </div>
-                    <TextInput
-                      id="name"
-                      type="number"
-                      placeholder="Enter Phone No"
-                      required
-                      className="form-control"
-                      name="phone"
-                      value={userData.phone}
-                      onChange={handleUserDataChange}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="lg:col-span-12 col-span-12 flex justify-between "><Label htmlFor="License Type" value="Licenses" /> <Label htmlFor="License Type" value="+ Add License" className="text-blue-500 cursor-pointer" /> </div>
-                      
-              <div className="lg:col-span-12 col-span-12 bg-gray-50 p-4 border rounded-md">
-                <div className="flex  flex-col gap-4">
-                  <div>
-                    <div className="mb-2 block">
-                      <Label htmlFor="License Type" value="License Type" />
-                    </div>
-                    <Select id="countries" required className="select-rounded">
-                      <option>Commercial</option>
-                      <option>Residential</option>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <div className="mb-2 block">
-                      <Label htmlFor="License No" value="Your Phone" />
-                    </div>
-                    <TextInput
-                      id="name"
-                      type="text"
-                      placeholder="Enter Phone No"
-                      required
-                      className="form-control"
-                      name="phone"
-                      value={userData.license.licenseNo}
-                      onChange={handleUserDataChange}
-                    />
-                  </div>
-                  <div>
-                    <div className="mb-2 block">
-                      <Label
-                        htmlFor="License Expiry Date"
-                        value="Expiry Date"
-                      />
-                    </div>
-                    {/* <TextInput
-                      id="name"
-                      type="date"
-                      placeholder="Enter Date"
-                      required
-                      className="form-control"
-                      name="expiryDate"
-                      value={userData.license.expiryDate}
-                      onChange={handleUserDataChange}
-                    /> */}
-                    <Datepicker
-                      name="expiryDate"
-                      className=""
-                      value={userData.license.expiryDate}
-                      onChange={handleUserDataChange}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+    <Modal show={visible} onClose={() => setVisible(false)}>
+      <Modal.Header>
+        {actionType === "ADD" ? "Add New Inspector" : "Edit Inspector"}
+      </Modal.Header>
+      <Modal.Body>
+        <div className="grid grid-cols-12 gap-4">
+          <div className="col-span-6">
+            <Label value="First Name" />
+            <TextInput
+              name="firstName"
+              value={userData.firstName}
+              onChange={handleUserDataChange}
+              placeholder="Enter First Name"
+              required
+            />
           </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <div className="flex justify-end w-full gap-2">
-            <Button
-              color={"primary"}
-              onClick={
-                actionType == "ADD" ? handleAddUserSubmit : handleEditUserSubmit
-              }
+          <div className="col-span-6">
+            <Label value="Last Name" />
+            <TextInput
+              name="lastName"
+              value={userData.lastName}
+              onChange={handleUserDataChange}
+              placeholder="Enter Last Name"
+              required
+            />
+          </div>
+          <div className="col-span-12">
+            <Label value="Email" />
+            <TextInput
+              name="email"
+              value={userData.email}
+              onChange={handleUserDataChange}
+              placeholder="email@example.com"
+              required
+              disabled={actionType === "EDIT"}
+            />
+          </div>
+          <div className="col-span-12">
+            <Label value="Phone" />
+            <TextInput
+              name="phone"
+              value={userData.phone}
+              onChange={handleUserDataChange}
+              placeholder="Enter Phone Number"
+              required
+            />
+          </div>
+
+          <div className="col-span-12 flex justify-between">
+            <Label value="Licenses" />
+            <button
+              type="button"
+              className="text-blue-500"
+              onClick={addLicense}
             >
-              Submit
-            </Button>
-            <Button color={"error"} onClick={() => setVisible(false)}>
-              Cancel
-            </Button>
+              + Add License
+            </button>
           </div>
-        </Modal.Footer>
-      </Modal>
-    </>
+
+          {userData.license.map((license, index) => (
+            <div
+              key={index}
+              className="col-span-12 bg-gray-50 p-4 border rounded-md relative "
+            >
+              <h3 className="mb-2">{`License ${index + 1}`}</h3>
+              <div className="my-4">
+                <Label value={`License`} />
+                <Select
+                  value={license.licenseType}
+                  onChange={(e) =>
+                    handleLicenseChange(index, "licenseType", e.target.value)
+                  }
+                >
+                  <option value="">Select License Type</option>
+                  <option value="Commercial">Commercial</option>
+                  <option value="Residential">Residential</option>
+                </Select>
+              </div>
+              <div className="my-4">
+                <Label value={`License No`} />
+                <TextInput
+                  name="licenseNo"
+                  value={license.licenseNo}
+                  onChange={(e) =>
+                    handleLicenseChange(index, "licenseNo", e.target.value)
+                  }
+                  placeholder="License Number"
+                  required
+                />
+              </div>
+              <div className="my-4">
+                <Label value={`Expiration Date`} />
+
+                <TextInput
+                  type="date"
+                  name="expiryDate"
+                  value={license.expiryDate}
+                  onChange={(e) =>
+                    handleLicenseChange(index, "expiryDate", e.target.value)
+                  }
+                  required
+                />
+              </div>
+              {userData.license.length > 1 && (
+                <button
+                  type="button"
+                  className="text-red-500 absolute top-2 right-2"
+                  onClick={() => removeLicense(index)}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </Modal.Body>
+      <Modal.Footer>
+        <Button color="primary" onClick={handleSubmit}>
+          Submit
+        </Button>
+        <Button color="error" onClick={() => setVisible(false)}>
+          Cancel
+        </Button>
+      </Modal.Footer>
+    </Modal>
   );
 };
 

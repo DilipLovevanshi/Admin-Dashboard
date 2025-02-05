@@ -9,6 +9,7 @@ export const GET = async () => {
   try {
     await connect();
     const users = await User.find();
+    console.log(users,"users")
     return new NextResponse(JSON.stringify(users), { status: 200 });
   } catch (error) {
     return new NextResponse("Error in fetching users" + error, { status: 500 });
@@ -18,11 +19,11 @@ export const GET = async () => {
 export const POST = async (request: Request) => {
   try {
     const body = await request.json();
-
+    console.log(body, "body");
     await connect();
-    const newUser = new User(body);
-    await newUser.save();
+    const newUser = await User.create(body);
 
+    console.log(newUser, "newUser");
     return new NextResponse(
       JSON.stringify({ message: "User is created", user: newUser }),
       { status: 201 }

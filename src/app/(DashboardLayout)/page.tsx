@@ -7,6 +7,7 @@ import { Table } from "flowbite-react";
 
 import AddEditUser from "../components/AddEditUser";
 import { toast, ToastContainer } from "react-toastify";
+import { BACKEND_API } from "@/constants/api";
 
 const Page = () => {
   const [userModalVisible, setUserModalVisible] = useState(false);
@@ -17,7 +18,7 @@ const Page = () => {
   const handleDeleteCall = async (id: any) => {
     try {
       const response = await fetch(
-        `http://localhost:3000/api/users?userId=${id}`,
+        `${BACKEND_API}api/users?userId=${id}`,
         {
           method: "DELETE",
         }
@@ -40,7 +41,7 @@ const Page = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch("http://localhost:3000/api/users");
+      const response = await fetch(`${BACKEND_API}api/users`);
       const data = await response.json();
       console.log(data, "data");
       setProductTableData(data);
@@ -65,7 +66,7 @@ const Page = () => {
           actionType={actionType}
         />
       )}
-      <div className="rounded-lg dark:shadow-dark-md shadow-md bg-white dark:bg-darkgray p-6  relative w-full break-words">
+      <div className="rounded-lg dark:shadow-dark-md shadow-md bg-white dark:bg-darkgray p-6 relative w-full break-words">
         <div className=" flex items-center justify-between">
           <h5 className="card-title">Table</h5>
           <Button
@@ -73,10 +74,11 @@ const Page = () => {
             onClick={() => {
               setUserDetails({});
               setUserModalVisible(true);
+              setActionType("ADD");
             }}
             className="w-fit "
           >
-            Add User{" "}
+            Add Inspector{" "}
           </Button>
         </div>
         <div className="mt-3">
@@ -84,7 +86,8 @@ const Page = () => {
             <Table hoverable>
               <Table.Head>
                 <Table.HeadCell className="p-6">Sr.no</Table.HeadCell>
-                <Table.HeadCell>Username</Table.HeadCell>
+                <Table.HeadCell>Name</Table.HeadCell>
+                <Table.HeadCell>Phone</Table.HeadCell>
                 <Table.HeadCell>Email</Table.HeadCell>
                 <Table.HeadCell>Actions</Table.HeadCell>
               </Table.Head>
@@ -95,7 +98,12 @@ const Page = () => {
                       <h6 className="text-sm">{index + 1}</h6>
                     </Table.Cell>
                     <Table.Cell>
-                      <h5 className="text-base text-wrap">{item?.username}</h5>
+                      <h5 className="text-base text-wrap">
+                        {item?.firstName} {item?.lastName}
+                      </h5>
+                    </Table.Cell>
+                    <Table.Cell>
+                      <h5 className="text-base text-wrap">{item?.phone}</h5>
                     </Table.Cell>
                     <Table.Cell>
                       <h5 className="text-base text-wrap">{item?.email}</h5>
